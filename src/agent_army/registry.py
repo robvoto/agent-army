@@ -26,6 +26,7 @@ class AgentSpec:
     aliases: list[str] = field(default_factory=list)
     tools: list[str] = field(default_factory=list)
     version: str = "1.0.0"
+    backlog_sheet_id: str | None = None
 
 
 def load_registry(registry_dir: Path | None = None) -> list[AgentSpec]:
@@ -55,6 +56,7 @@ def load_registry(registry_dir: Path | None = None) -> list[AgentSpec]:
                 aliases=data.get("aliases", []),
                 tools=data.get("tools", []),
                 version=data.get("version", "1.0.0"),
+                backlog_sheet_id=data.get("backlog_sheet_id"),
             )
             specs.append(spec)
             logger.debug("Loaded agent: %s (%s)", spec.id, spec.version)

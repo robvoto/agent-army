@@ -68,8 +68,19 @@ Agents are registered in `agent-factory/config/agents/<id>/agent.json`. Army rea
 | `aliases` | yes | command aliases |
 | `tools` | yes | declared tool list |
 | `version` | no | defaults to "1.0.0" |
+| `backlog_sheet_id` | no | Google Sheets spreadsheet ID for this agent's backlog — army uses this to add backlog items without hardcoded URLs |
 
-Factory is responsible for writing all fields including `purpose`. Army reads but never writes.
+Factory is responsible for writing all fields. Army reads but never writes.
+
+### Backlog routing
+
+When the user asks army to add a backlog item for a specialist agent, army:
+1. Looks up the agent in the registry by name/alias
+2. Reads `backlog_sheet_id` from the agent's spec
+3. Appends the item to that agent's Google Sheet
+4. If `backlog_sheet_id` is null, reports that the agent has no backlog sheet configured
+
+This means army can manage any agent's backlog without hardcoding sheet locations — the location is declared in the agent's own registry entry.
 
 ## Persistence
 
