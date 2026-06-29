@@ -1,7 +1,7 @@
-"""Shared knowledge store — reads/writes the agent-factory shared SQLite store.
+"""Army knowledge store — persistent SQLite-backed store for army runtime knowledge.
 
-All agents in the army share the same namespace so knowledge compounds across
-projects. Falls back to a local store if agent-factory isn't available.
+All agents dispatched by the army share this namespace so knowledge compounds
+across sessions and tasks.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from langgraph.store.base import (
     SearchOp,
 )
 
-from .config import LOCAL_KNOWLEDGE_DB, SHARED_KNOWLEDGE_DB
+from .config import KNOWLEDGE_DB
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +41,6 @@ CREATE TABLE IF NOT EXISTS knowledge_items (
 );
 CREATE INDEX IF NOT EXISTS idx_namespace ON knowledge_items (namespace);
 """
-
-
-def _effective_db_path() -> Path:
-    if SHARED_KNOWLEDGE_DB.parent.exists():
-        return SHARED_KNOWLEDGE_DB
-    logger.warning("agent-factory data dir not found; using local knowledge store.")
-    return LOCAL_KNOWLEDGE_DB
 
 
 @contextmanager
@@ -81,7 +74,7 @@ def _row_to_item(row: sqlite3.Row) -> Item:
 
 class SqliteStore(BaseStore):
     def __init__(self, db_path: Path | None = None) -> None:
-        self._db_path = db_path or _effective_db_path()
+        self._db_path = db_path or KNOWLEDGE_DB
 
     def batch(self, ops: Iterable[Op]) -> list[Result]:
         results: list[Result] = []
@@ -155,5 +148,5 @@ def get_knowledge_store(db_path: Path | None = None) -> SqliteStore:
     global _store
     if _store is None:
         _store = SqliteStore(db_path)
-        logger.info("Army knowledge store at %s", _store._db_path)
+        logger.info("Army knowledge store: %s", _store._db_path)
     return _store

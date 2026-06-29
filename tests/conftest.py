@@ -17,9 +17,7 @@ def _isolate_knowledge_store(tmp_path, monkeypatch):
     import agent_army.knowledge_store as ks_mod
 
     monkeypatch.setattr(ks_mod, "_store", None)
-    # Redirect shared store path to tmp so tests never touch the real agent-factory DB
-    monkeypatch.setattr(ks_mod, "SHARED_KNOWLEDGE_DB", tmp_path / "knowledge_store.sqlite3")
-    monkeypatch.setattr(ks_mod, "LOCAL_KNOWLEDGE_DB", tmp_path / "knowledge_store_local.sqlite3")
+    monkeypatch.setattr(ks_mod, "KNOWLEDGE_DB", tmp_path / "knowledge_store.sqlite3")
 
 
 @pytest.fixture()
