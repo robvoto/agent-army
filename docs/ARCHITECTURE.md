@@ -81,10 +81,14 @@ Factory is responsible for writing all fields including `purpose`. Army reads bu
 | Factory checkpoints | `factory/data/factory_checkpoints.sqlite3` | Factory |
 | Factory knowledge | `factory/data/knowledge_store.sqlite3` | Factory |
 
-## Backlog items (not yet implemented)
+## Backlog
 
-- Real specialist agent dispatch (current orchestrator stubs the call)
-- Approval workflow for tasks requiring human sign-off
-- Token / cost tracking in army
-- Connect army and factory knowledge stores (shared `("shared","docs")` namespace)
-- No-fallback / no-hardcode enforcement gate
+Live backlog: https://docs.google.com/spreadsheets/d/1v1zJjwGTqhOgb06nYChaGjRNZIVXQht5pNBUbh9r7RA/edit
+
+Key open items:
+- ARMY-001: Real specialist agent dispatch (orchestrator stubs the call)
+- ARMY-002: Approval workflow for tasks requiring human sign-off
+- ARMY-003: Token / cost tracking in army
+- ARMY-004: Connect army and factory knowledge stores
+- ARMY-007: Wire agent-factory as callable specialist from army
+- ARMY-008: No-fallback / no-hardcode enforcement gate

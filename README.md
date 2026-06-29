@@ -68,3 +68,7 @@ ARMY_MODEL=gpt-4.1-mini     # Optional model override
 - `src/agent_army/cli.py` — CLI entry point
 - `src/agent_army/knowledge_store.py` — Runtime knowledge store
 - `docs/ARCHITECTURE.md` — Architecture overview
+
+## Backlog
+
+https://docs.google.com/spreadsheets/d/1v1zJjwGTqhOgb06nYChaGjRNZIVXQht5pNBUbh9r7RA/edit
