@@ -24,16 +24,20 @@ _NOISY_OR_SENSITIVE_LOGGERS = [
 ]
 
 
-def configure_logging(verbose: bool = False) -> None:
+def configure_logging(verbose: bool = False, system_verbose: bool = False) -> None:
     """Configure logging with safe defaults.
 
-    Verbose mode enables DEBUG for Agent Army code only. Third-party HTTP/provider
-    libraries remain at WARNING to avoid dumping prompts, request bodies, headers,
-    cookies, tokens, and other noisy internals.
+    `verbose=True` means human/operator debug logs for Agent Army only.
+    It must not enable OpenAI/httpx/LangChain provider dumps.
+
+    `system_verbose=True` is a separate low-level diagnostic mode. It enables
+    third-party DEBUG logs and may expose prompts, request bodies, headers,
+    cookies, provider metadata, and other noisy internals. Use only when
+    explicitly debugging SDK/network behaviour.
     """
 
-    root_level = logging.INFO
-    army_level = logging.DEBUG if verbose else logging.INFO
+    root_level = logging.DEBUG if system_verbose else logging.INFO
+    army_level = logging.DEBUG if verbose or system_verbose else logging.INFO
 
     logging.basicConfig(
         format=_FORMAT,
@@ -43,6 +47,13 @@ def configure_logging(verbose: bool = False) -> None:
     )
 
     logging.getLogger("agent_army").setLevel(army_level)
+
+    if system_verbose:
+        logging.warning(
+            "System verbose logging is enabled. Third-party SDK logs may include prompts, "
+            "request bodies, headers, cookies, and provider internals."
+        )
+        return
 
     for logger_name in _NOISY_OR_SENSITIVE_LOGGERS:
         logging.getLogger(logger_name).setLevel(logging.WARNING)
