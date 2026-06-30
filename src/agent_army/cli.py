@@ -70,7 +70,17 @@ def main() -> None:
     load_dotenv()
 
     parser = argparse.ArgumentParser(prog="agent-army", description="Agent Army orchestrator")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable Agent Army debug logging")
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Enable human-friendly Agent Army debug logging only",
+    )
+    parser.add_argument(
+        "--system-verbose",
+        action="store_true",
+        help="Enable low-level third-party SDK/network debug logs; may expose prompts/headers",
+    )
 
     sub = parser.add_subparsers(dest="command")
 
@@ -80,7 +90,7 @@ def main() -> None:
     sub.add_parser("telegram", help="Run the Telegram bot gateway")
 
     args = parser.parse_args()
-    configure_logging(args.verbose)
+    configure_logging(verbose=args.verbose, system_verbose=args.system_verbose)
 
     command = args.command or "chat"
 
