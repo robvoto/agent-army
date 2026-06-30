@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import logging
 import os
 import sys
 
-
-def _setup_logging(verbose: bool) -> None:
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(format="%(levelname)s %(name)s: %(message)s", level=level)
+from .logging_config import configure_logging
 
 
 def _run_chat(model: str) -> None:
@@ -74,7 +70,7 @@ def main() -> None:
     load_dotenv()
 
     parser = argparse.ArgumentParser(prog="agent-army", description="Agent Army orchestrator")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable Agent Army debug logging")
 
     sub = parser.add_subparsers(dest="command")
 
@@ -84,7 +80,7 @@ def main() -> None:
     sub.add_parser("telegram", help="Run the Telegram bot gateway")
 
     args = parser.parse_args()
-    _setup_logging(args.verbose)
+    configure_logging(args.verbose)
 
     command = args.command or "chat"
 
