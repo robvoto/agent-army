@@ -9,6 +9,7 @@ from typing import Any
 
 import httpx
 
+from .logging_config import safe_preview
 from .orchestrator import ArmyOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -27,29 +28,41 @@ def _api(token: str, method: str, **kwargs: Any) -> dict:
 def _get_updates(token: str, offset: int) -> list[dict]:
     try:
         data = _api(token, "getUpdates", offset=offset, timeout=_POLL_TIMEOUT)
-        return data.get("result", [])
+        updates = data.get("result", [])
+        if updates:
+            logger.debug("Telegram updates received: %d", len(updates))
+        return updates
     except Exception as exc:
-        logger.warning("getUpdates failed: %s", exc)
+        logger.warning("Telegram getUpdates failed: %s", exc)
         return []
 
 
 def _send_message(token: str, chat_id: int, text: str) -> None:
     try:
         chunks = [text[i : i + 4096] for i in range(0, len(text), 4096)]
+        logger.debug(
+            "Telegram sending reply | chat_id=%s | chars=%d | chunks=%d",
+            chat_id,
+            len(text),
+            len(chunks),
+        )
         for chunk in chunks:
             _api(token, "sendMessage", chat_id=chat_id, text=chunk, parse_mode="Markdown")
     except Exception as exc:
-        logger.error("sendMessage failed: %s", exc)
+        logger.error("Telegram sendMessage failed | chat_id=%s | error=%s", chat_id, exc)
 
 
 def _allowed_chat_ids() -> set[int]:
     raw = os.getenv("ARMY_ALLOWED_CHAT_IDS", "")
     if not raw.strip():
+        logger.warning("ARMY_ALLOWED_CHAT_IDS is empty; all Telegram chats are allowed.")
         return set()
     try:
-        return {int(x.strip()) for x in raw.split(",") if x.strip()}
+        allowed = {int(x.strip()) for x in raw.split(",") if x.strip()}
+        logger.info("Telegram allowlist loaded | allowed_chats=%d", len(allowed))
+        return allowed
     except ValueError:
-        logger.warning("Invalid ARMY_ALLOWED_CHAT_IDS: %r", raw)
+        logger.warning("Invalid ARMY_ALLOWED_CHAT_IDS value; no allowlist loaded.")
         return set()
 
 
@@ -67,15 +80,17 @@ class TelegramGateway:
         text = msg.get("text", "").strip()
 
         if not self._is_allowed(chat_id):
-            logger.info("Ignored message from unauthorized chat %d", chat_id)
+            logger.info("Telegram message ignored | chat_id=%s | reason=unauthorised", chat_id)
             return
 
         if text == "/new":
+            logger.info("Telegram command received | chat_id=%s | command=/new", chat_id)
             self._orch.new_session()
             _send_message(self._token, chat_id, "Started a fresh conversation.")
             return
 
         if text == "/agents":
+            logger.info("Telegram command received | chat_id=%s | command=/agents", chat_id)
             specs = self._orch.registry
             if not specs:
                 reply = "No agents registered yet."
@@ -85,19 +100,26 @@ class TelegramGateway:
             _send_message(self._token, chat_id, reply)
             return
 
-        if not text or text.startswith("/"):
+        if not text:
+            logger.debug("Telegram empty message ignored | chat_id=%s", chat_id)
             return
 
+        if text.startswith("/"):
+            logger.info("Telegram command ignored | chat_id=%s | command=%s", chat_id, safe_preview(text))
+            return
+
+        logger.info("Telegram user message received | chat_id=%s | chars=%d", chat_id, len(text))
+        logger.debug("Telegram message preview: %s", safe_preview(text, max_chars=140))
         try:
             reply = self._orch.invoke(text)
         except Exception as exc:
-            logger.exception("Orchestrator error")
+            logger.exception("Telegram orchestrator error | chat_id=%s", chat_id)
             reply = f"Error: {exc}"
 
         _send_message(self._token, chat_id, reply)
 
     def run(self) -> None:
-        logger.info("Army Telegram gateway starting (session %s).", self._orch.session_id)
+        logger.info("Army Telegram gateway starting | session=%s", self._orch.session_id)
         offset = 0
         while True:
             updates = _get_updates(self._token, offset)
