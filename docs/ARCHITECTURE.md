@@ -4,102 +4,86 @@
 
 Agent Army is the **main orchestrator, runtime, and control plane** for the agent platform.
 
-- Receives all user input (Telegram / CLI)
+- Receives all user input through Telegram or CLI
 - Maintains session state and conversation history
-- Routes tasks to the correct specialist agent
-- Owns the army knowledge store
+- Routes tasks to released specialist agents
+- Owns the Army knowledge store
 - Reports results back to the user
 
-Agent Army does **not** create, configure, or stage agents. That is `agent-factory`'s job.
+Agent Army does **not** create, configure, stage, or modify agents. That is `agent-factory`'s responsibility.
 
 ## Repo split
 
-```
-agent-army       ← this repo
-  orchestrator   — LangGraph supervisor graph
-  registry       — reads agent specs from agent-factory
-  telegram       — user-facing Telegram bot
-  cli            — chat and telegram commands
-  knowledge_store — army runtime knowledge (army/data/)
-  checkpointer   — LangGraph SQLite checkpoint store
-
-agent-factory    ← specialist agent
-  factory_brain  — designs and stages agent packages
-  telegram       — factory admin bot (staging, approvals)
-  storage        — staged_agents, approvals, factory_threads
-  agent_spec     — Pydantic validation for agent packages
-  agent_catalog  — staged + enabled agent inventory
-  creator_workflow — deterministic scaffolding workflow
-
-ai-tech-lead     ← specialist agent
-  (separate repo, called by army)
-```
+| Repo / component | Responsibility |
+|---|---|
+| `agent-army` | Runtime orchestrator, registry reader, Telegram gateway, CLI, Army-owned knowledge store, checkpoint store |
+| `agent-factory` | Designs, scaffolds, stages, tests, and promotes agents; delegates implementation to bounded coding workers |
+| `ai-tech-lead-agent` | Technical-lead specialist that plans, reviews, and controls bounded coding-agent work |
+| Codex / Claude Code / other coding workers | Implementation workers called through bounded, approved task packs |
 
 ## Data flow
 
-```
-User (Telegram / CLI)
+```text
+User
   │
   ▼
 Army Telegram Gateway / CLI
   │
   ▼
-ArmyOrchestrator (LangGraph)
+Army Orchestrator
   │
-  ├── reads registry from agent-factory/config/agents/
+  ├── reads released agents from the registry
   │
   ├── dispatches to specialist agents
-  │   ├── ai-tech-lead  (coding tasks)
-  │   ├── agent-factory (create/configure agents)
-  │   └── future specialists
+  │   ├── ai-tech-lead-agent
+  │   ├── agent-factory
+  │   └── future released specialists
   │
-  └── stores learnings in army/data/knowledge_store.sqlite3
+  └── stores Army-owned runtime knowledge
 ```
 
 ## Agent registry contract
 
-Agents are registered in `agent-factory/config/agents/<id>/agent.json`. Army reads:
+Agents are registered in `agent-factory/config/agents/<id>/agent.json`.
+
+Army reads the registry. Factory writes and promotes registry entries.
 
 | Field | Required | Purpose |
 |-------|----------|---------|
-| `id` | yes | unique identifier |
-| `name` | yes | display name |
-| `purpose` | yes | used by orchestrator for routing decisions |
-| `aliases` | yes | command aliases |
-| `tools` | yes | declared tool list |
-| `version` | no | defaults to "1.0.0" |
-| `backlog_sheet_id` | no | Google Sheets spreadsheet ID for this agent's backlog — army uses this to add backlog items without hardcoded URLs |
+| `id` | yes | Unique identifier |
+| `name` | yes | Display name |
+| `purpose` | yes | Used by orchestrator for routing decisions |
+| `aliases` | yes | Command aliases |
+| `tools` | yes | Declared tool list |
+| `status` | yes | Draft, incubating, candidate, released, or deprecated |
+| `version` | no | Defaults to `1.0.0` |
+| `backlog_sheet_id` | no | Google Sheets spreadsheet ID for this agent's backlog |
 
-Factory is responsible for writing all fields. Army reads but never writes.
+Army may route work only to approved/released agents. It must not discover agents by scanning random project folders or GitHub repositories.
 
-### Backlog routing
+## Backlog routing
 
-When the user asks army to add a backlog item for a specialist agent, army:
-1. Looks up the agent in the registry by name/alias
-2. Reads `backlog_sheet_id` from the agent's spec
-3. Appends the item to that agent's Google Sheet
-4. If `backlog_sheet_id` is null, reports that the agent has no backlog sheet configured
+When the user asks Army to add a backlog item for a specialist agent, Army:
 
-This means army can manage any agent's backlog without hardcoding sheet locations — the location is declared in the agent's own registry entry.
+1. Looks up the agent in the registry by name or alias.
+2. Reads `backlog_sheet_id` from the agent spec.
+3. Appends the item to that agent's Google Sheet.
+4. Reports clearly if the agent has no backlog sheet configured.
 
-## Persistence
+The backlog location is declared in the agent's registry entry. Army must not hardcode specialist backlog URLs.
 
-| Store | Path | Owner |
-|-------|------|-------|
-| Knowledge store | `army/data/knowledge_store.sqlite3` | Army |
-| Checkpoints | `army/data/checkpoints.sqlite3` | Army |
-| Staged agents | `factory/data/agent_factory.sqlite3` | Factory |
-| Factory checkpoints | `factory/data/factory_checkpoints.sqlite3` | Factory |
-| Factory knowledge | `factory/data/knowledge_store.sqlite3` | Factory |
+## Persistence ownership
 
-## Backlog
+| Store | Owner |
+|-------|-------|
+| Knowledge store | Army |
+| Checkpoints | Army |
+| Staged agents | Factory |
+| Factory checkpoints | Factory |
+| Factory knowledge | Factory |
 
-Live backlog: https://docs.google.com/spreadsheets/d/1v1zJjwGTqhOgb06nYChaGjRNZIVXQht5pNBUbh9r7RA/edit
+## Documentation and commands
 
-Key open items:
-- ARMY-001: Real specialist agent dispatch (orchestrator stubs the call)
-- ARMY-002: Approval workflow for tasks requiring human sign-off
-- ARMY-003: Token / cost tracking in army
-- ARMY-004: Connect army and factory knowledge stores
-- ARMY-007: Wire agent-factory as callable specialist from army
-- ARMY-008: No-fallback / no-hardcode enforcement gate
+Use `docs/INDEX.md` as the documentation entry point.
+
+Standard setup, run, test, and environment commands live only in `docs/COMMANDS.md`.
